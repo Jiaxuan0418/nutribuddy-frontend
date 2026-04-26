@@ -14,7 +14,7 @@ import FoodLogPage    from "./pages/FoodLogPage";
 import ChatbotPage    from "./pages/ChatbotPage";
 import ProfilePage    from "./pages/ProfilePage";
 
-const API_URL     = "/api";
+const API_URL = "https://jxchan-nutribuddy.hf.space/api";
 const STORAGE_KEY = "nutribuddy_session";
 
 function loadSession() {
