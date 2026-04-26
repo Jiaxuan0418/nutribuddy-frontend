@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { C } from "../theme";
 
-const API_URL = "https://JxChan-nutribuddy-backend.hf.space/api";
+const API_URL = "https://jxchan-nutribuddy.hf.space/api";
 
 const SUGGESTIONS = [
   "What should I eat for breakfast?",

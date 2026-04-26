@@ -5,7 +5,7 @@ import { C } from "../theme";
 import nutriLogo from "../assets/nutribuddy_logo.png";
 import mascotImg from "../assets/nutribuddy_authpagecartoon.png";
 
-const API_URL = "https://JxChan-nutribuddy-backend.hf.space/api";
+const API_URL = "https://jxchan-nutribuddy.hf.space/api";
 
 // ── Styles ────────────────────────────────────────────────────
 const S = {

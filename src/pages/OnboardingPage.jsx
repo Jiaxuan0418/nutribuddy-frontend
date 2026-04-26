@@ -11,7 +11,7 @@ import { C } from "../theme";
 import { Logo } from "../components/shared";
 import { calcBMR, calcTDEE, calcMacros, calcSmartGoal } from "../utils/nutrition";
 
-const API_URL = "https://JxChan-nutribuddy-backend.hf.space/api";
+const API_URL = "https://jxchan-nutribuddy.hf.space/api";
 
 const PREFERENCES  = ["Vegetarian", "Vegan", "Halal", "Keto", "Low-carb", "High-protein", "Mediterranean"];
 const ALLERGIES    = ["Nuts", "Dairy", "Gluten", "Eggs", "Shellfish", "Soy", "Fish"];

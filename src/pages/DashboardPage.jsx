@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { C } from "../theme";
 
-const API_URL = "https://JxChan-nutribuddy-backend.hf.space/api";
+const API_URL = "https://jxchan-nutribuddy.hf.space/api";
 const DAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const STATUS_META = {

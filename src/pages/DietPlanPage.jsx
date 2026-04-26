@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { C } from "../theme";
 import { ProgressBar } from "../components/shared";
 
-const API_URL = "https://JxChan-nutribuddy-backend.hf.space/api";
+const API_URL = "https://jxchan-nutribuddy.hf.space/api";
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
