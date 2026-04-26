@@ -373,7 +373,9 @@ export default function DietPlanPage({ profile, user, onMealLogged }) {
           </div>
 
           {/* Meal cards */}
-          {Object.entries(plan).map(([mealTime, meal]) => (
+          {["Breakfast", "Lunch", "Dinner", "Snack"].filter(m => plan[m]).map((mealTime) => {
+            const meal = plan[mealTime];
+            return (
             <div className="nb-card" key={mealTime}>
               {/* Clickable header */}
               <div style={{ display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
@@ -427,7 +429,8 @@ export default function DietPlanPage({ profile, user, onMealLogged }) {
                 </span>
               </div>
             </div>
-          ))}
+          );
+        })}
 
           {/* Tips */}
           <div className="nb-card" style={{ background: "#fffbf0", border: "1.5px solid #fde8c0" }}>
