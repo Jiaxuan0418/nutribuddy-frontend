@@ -10,7 +10,7 @@ import { useState, useRef, useEffect } from "react";
 import { C } from "../theme";
 import { MacroRow } from "../components/shared";
 
-const API_URL  = "/api";
+const API_URL  = "https://jxchan-nutribuddy.hf.space/api";
 const MEAL_TIMES = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
 const EMPTY_FORM = {
