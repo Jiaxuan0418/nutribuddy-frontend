@@ -15,34 +15,49 @@ const S = {
     display: "flex", flexDirection: "column",
   },
   navbar: {
-    display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 185px",
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "10px clamp(16px, 5vw, 80px)",
   },
-  navLogoImg:  { height: 90, width: "auto", objectFit: "contain" },
+  navLogoImg:  { height: "clamp(55px, 8vw, 90px)", width: "auto", objectFit: "contain" },
   navLoginBtn: {
     background: C.green, color: "#fff", border: "none", borderRadius: 99,
     padding: "10px 28px", fontFamily: "'Nunito', sans-serif", fontWeight: 800,
     fontSize: 14, cursor: "pointer", boxShadow: "0 2px 10px rgba(76,175,125,0.3)", transition: "all .18s",
+    whiteSpace: "nowrap",
   },
   outerCard: {
-    flex: 1, margin: "0 200px 40px", background: "rgba(255,255,255,0.45)",
+    flex: 1,
+    margin: "0 clamp(12px, 4vw, 80px) 40px",
+    background: "rgba(255,255,255,0.45)",
     backdropFilter: "blur(12px)", borderRadius: 28, display: "flex",
-    alignItems: "center", padding: "40px 60px", gap: 60,
+    alignItems: "center", padding: "clamp(20px, 4vw, 40px) clamp(16px, 4vw, 60px)",
+    gap: "clamp(20px, 4vw, 60px)",
     boxShadow: "0 8px 40px rgba(76,175,125,0.12)",
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
-  leftPanel:   { flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-start" },
+  leftPanel: {
+    flex: "1 1 280px", display: "flex", flexDirection: "column", alignItems: "flex-start",
+    minWidth: 0,
+  },
   mascotBox: {
     width: "100%", marginBottom: 16,
     display: "flex", alignItems: "center", justifyContent: "flex-start",
   },
-  tagline:     { fontFamily: "'Nunito', sans-serif", fontWeight: 900, fontSize: 34, color: C.green, lineHeight: 1.2, marginBottom: 24 },
+  tagline: {
+    fontFamily: "'Nunito', sans-serif", fontWeight: 900,
+    fontSize: "clamp(22px, 3vw, 34px)",
+    color: C.green, lineHeight: 1.2, marginBottom: 24,
+  },
   featureRow:  { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 },
   featureIcon: {
     fontSize: 20, width: 36, height: 36, background: "rgba(255,255,255,0.7)",
     borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
   featureText: { fontSize: 15, fontWeight: 600, color: C.text },
-  formCard:    {
-    width: 400, background: "#fff", borderRadius: 24,
+  formCard: {
+    width: "min(400px, 100%)",
+    background: "#fff", borderRadius: 24,
     boxShadow: "0 4px 30px rgba(76,175,125,0.13)", overflow: "hidden", flexShrink: 0,
   },
   tabBar: { display: "flex", background: "#efefef", padding: 5, gap: 4, borderRadius: "24px 24px 0 0" },
@@ -196,9 +211,8 @@ export default function AuthPage({ onAuth }) {
   const [successMsg, setSuccessMsg] = useState("");
   const [loading,    setLoading]    = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [modal,      setModal]      = useState(null); // "tos" | "privacy" | "help" | null
+  const [modal,      setModal]      = useState(null);
 
-  // Forgot password flow: "idle" | "enter_email" | "answer_question" | "new_password" | "done"
   const [fpStep,     setFpStep]     = useState("idle");
   const [fpEmail,    setFpEmail]    = useState("");
   const [fpQuestion, setFpQuestion] = useState("");
@@ -216,7 +230,6 @@ export default function AuthPage({ onAuth }) {
     setFpAnswer(""); setFpNewPw(""); setFpConfirm(""); setFpErr("");
   }
 
-  // ── Signup ──
   async function handleSignup() {
     if (!form.name || !form.email || !form.password)  { setErr("Please fill in all fields before continuing."); return; }
     if (form.password !== form.confirm)                { setErr("Your passwords don't match. Please re-enter them."); return; }
@@ -243,7 +256,6 @@ export default function AuthPage({ onAuth }) {
     }
   }
 
-  // ── Login ──
   async function handleLogin() {
     if (!form.email || !form.password) { setErr("Please enter your email and password to log in."); return; }
     try {
@@ -263,7 +275,6 @@ export default function AuthPage({ onAuth }) {
     }
   }
 
-  // ── Forgot password: Step 1 — fetch security question ──
   async function fpLookup() {
     if (!fpEmail) { setFpErr("Please enter your email address."); return; }
     try {
@@ -285,7 +296,6 @@ export default function AuthPage({ onAuth }) {
     }
   }
 
-  // ── Forgot password: Step 2 — verify answer & set new password ──
   async function fpReset() {
     if (!fpAnswer)               { setFpErr("Please enter your answer."); return; }
     if (!fpNewPw)                { setFpErr("Please enter a new password."); return; }
@@ -310,7 +320,6 @@ export default function AuthPage({ onAuth }) {
     }
   }
 
-  // ── Render forgot-password panel (replaces login form) ──
   function ForgotPasswordPanel() {
     if (fpStep === "done") {
       return (
@@ -356,7 +365,6 @@ export default function AuthPage({ onAuth }) {
       );
     }
 
-    // fpStep === "enter_email"
     return (
       <>
         <div style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 15, marginBottom: 4 }}>
@@ -378,6 +386,21 @@ export default function AuthPage({ onAuth }) {
 
   return (
     <div style={S.page}>
+      {/* Responsive styles injected */}
+      <style>{`
+        @media (max-width: 700px) {
+          .auth-left-panel { display: none !important; }
+          .auth-outer-card {
+            margin: 0 12px 24px !important;
+            padding: 20px 12px !important;
+            justify-content: center !important;
+          }
+          .auth-form-card { width: 100% !important; }
+        }
+        @media (max-width: 900px) {
+          .auth-mascot-img { width: 280px !important; height: 180px !important; }
+        }
+      `}</style>
 
       {/* ── Modals ── */}
       {modal === "tos"     && <DocModal title="📄 Terms of Service" sections={TOS_SECTIONS}     onClose={() => setModal(null)} />}
@@ -398,12 +421,17 @@ export default function AuthPage({ onAuth }) {
       </div>
 
       {/* ── Outer card ── */}
-      <div style={S.outerCard}>
+      <div style={S.outerCard} className="auth-outer-card">
 
-        {/* Left panel */}
-        <div style={S.leftPanel}>
+        {/* Left panel — hidden on mobile */}
+        <div style={S.leftPanel} className="auth-left-panel">
           <div style={S.mascotBox}>
-            <img src={mascotImg} alt="NutriBuddy mascot" style={{ width: 520, height: 320, objectFit: "contain", marginLeft: -16 }} />
+            <img
+              src={mascotImg}
+              alt="NutriBuddy mascot"
+              className="auth-mascot-img"
+              style={{ width: 520, height: 320, objectFit: "contain", marginLeft: -16, maxWidth: "100%" }}
+            />
           </div>
           <div style={S.tagline}>Eat healthy,<br />effortlessly.</div>
           {FEATURES.map((f) => (
@@ -414,8 +442,8 @@ export default function AuthPage({ onAuth }) {
           ))}
         </div>
 
-        {/* Right panel */}
-        <div style={S.formCard}>
+        {/* Right panel — form */}
+        <div style={S.formCard} className="auth-form-card">
           <div style={S.tabBar}>
             <button style={tab === "login"  ? S.tabActive : S.tabInactive} onClick={() => switchTab("login")}>Log in</button>
             <button style={tab === "signup" ? S.tabActive : S.tabInactive} onClick={() => switchTab("signup")}>Sign up</button>
@@ -477,7 +505,7 @@ export default function AuthPage({ onAuth }) {
                   </span>
                 </div>
 
-                {err       && <div style={S.error}>{err}</div>}
+                {err        && <div style={S.error}>{err}</div>}
                 {successMsg && <div style={S.success}>{successMsg}</div>}
 
                 <button style={S.pillBtn} onClick={handleSignup}>
