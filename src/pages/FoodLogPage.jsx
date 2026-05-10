@@ -5,7 +5,8 @@
 //  3. Logs are loaded from DB on mount and on date change
 //  4. Delete removes from DB, not just local state
 //  5. Date picker lets user browse past days' logs
-import { useState, useRef, useEffect } from "react";
+
+import React, { useState, useRef, useEffect } from "react";
 import { C } from "../theme";
 import { MacroRow } from "../components/shared";
 
@@ -691,6 +692,15 @@ export default function FoodLogPage({ profile, user, refreshKey = 0 }) {
 
   const isToday = selectedDate === todayStr;
 
+  // Close the add-food panel whenever the user picks a different date
+  const prevDateRef = React.useRef(selectedDate);
+  useEffect(() => {
+    if (prevDateRef.current !== selectedDate) {
+      setShowAdd(false);
+      prevDateRef.current = selectedDate;
+    }
+  }, [selectedDate]);
+
   // Load logs from DB whenever the selected date or refreshKey changes
   useEffect(() => {
     if (!user?.id) {
@@ -699,7 +709,8 @@ export default function FoodLogPage({ profile, user, refreshKey = 0 }) {
       return;
     }
     setLogs([]);
-    setShowAdd(false);
+    // Do NOT reset showAdd here — if user is mid-scan we want to keep the panel open.
+    // Only collapse if the date changes (handled separately below).
     setShowAnalysis(false);
     setAiAnalysis(null);
     setDbLoading(true);
@@ -904,17 +915,20 @@ export default function FoodLogPage({ profile, user, refreshKey = 0 }) {
 
           <TabToggle active={activeTab} onChange={setActiveTab} />
 
-          {activeTab === "manual" ? (
+          {/* Both forms stay mounted; only one is visible at a time.
+              This preserves ImageRecognitionForm's scan state when switching tabs. */}
+          <div style={{ display: activeTab === "manual" ? "block" : "none" }}>
             <ManualForm
               onAdd={addLog}
               onCancel={() => setShowAdd(false)}
             />
-          ) : (
+          </div>
+          <div style={{ display: activeTab === "image" ? "block" : "none" }}>
             <ImageRecognitionForm
               onAdd={addLog}
               onCancel={() => setShowAdd(false)}
             />
-          )}
+          </div>
         </div>
       )}
 
