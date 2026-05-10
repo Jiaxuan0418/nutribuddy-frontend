@@ -5,7 +5,6 @@
 //  3. Logs are loaded from DB on mount and on date change
 //  4. Delete removes from DB, not just local state
 //  5. Date picker lets user browse past days' logs
-import FeedbackButtons from "../components/FeedbackButtons";
 import { useState, useRef, useEffect } from "react";
 import { C } from "../theme";
 import { MacroRow } from "../components/shared";
@@ -668,7 +667,6 @@ function ImageRecognitionForm({ onAdd, onCancel }) {
           </>
         )}
         <button className="btn-outline" onClick={onCancel}>Cancel</button>
-        <FeedbackButtons prediction={selected} file={file} />
       </div>
     </div>
   );
