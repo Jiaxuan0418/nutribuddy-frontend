@@ -40,7 +40,6 @@ export default function App() {
   const [foodLogRefreshKey, setFoodLogRefreshKey] = useState(0);
 
   // Called by DietPlanPage after successfully logging a meal to the food log
-  // — increments a key so FoodLogPage's useEffect re-fires and re-fetches
   function handleDietPlanLogged() {
     setFoodLogRefreshKey((k) => k + 1);
   }
@@ -90,31 +89,13 @@ export default function App() {
     setPage("home");
   }
 
-  // Pages that should stay mounted (keep state alive) even when not visible.
-  // Using display:none instead of conditional rendering so that async tasks
-  // (e.g. food image recognition) keep running while the user navigates away.
-  const PERSISTENT_PAGES = ["foodlog", "chatbot", "dietplan"];
-
-  const persistentPages = [
-    {
-      key: "foodlog",
-      el: <FoodLogPage profile={profile} user={user} refreshKey={foodLogRefreshKey} />,
-    },
-    {
-      key: "chatbot",
-      el: <ChatbotPage profile={profile} user={user} />,
-    },
-    {
-      key: "dietplan",
-      el: <DietPlanPage profile={profile} user={user} onMealLogged={handleDietPlanLogged} />,
-    },
-  ];
-
-  // Pages that are fine to unmount when not active (no long-running tasks).
-  const lightPageMap = {
-    home:      <HomePage      user={user}    profile={profile} />,
-    dashboard: <DashboardPage profile={profile} user={user} />,
-    profile:   <ProfilePage   user={user}    profile={profile} onLogout={handleLogout} onUpdate={(p, updatedUser) => {
+  const pageMap = {
+    home:       <HomePage      user={user}    profile={profile} />,
+    dashboard:  <DashboardPage profile={profile} user={user} />,
+    dietplan:   <DietPlanPage  profile={profile} user={user} onMealLogged={handleDietPlanLogged} />,
+    foodlog:    <FoodLogPage   profile={profile} user={user} refreshKey={foodLogRefreshKey} />,
+    chatbot:    <ChatbotPage   profile={profile} user={user} />,
+    profile:    <ProfilePage   user={user}    profile={profile} onLogout={handleLogout} onUpdate={(p, updatedUser) => {
       setProfile(p);
       if (updatedUser) setUser(updatedUser);
       const u = updatedUser || user;
@@ -133,23 +114,7 @@ export default function App() {
         <div className="nb-app">
           <Sidebar page={page} setPage={setPage} user={user} onLogout={handleLogout} />
           <main className="nb-main">
-            {/* Persistent pages: always mounted, hidden via CSS when not active.
-                This keeps async tasks (food scan, chat) alive during navigation. */}
-            {persistentPages.map(({ key, el }) => (
-              <div
-                key={key}
-                style={{ display: page === key ? "block" : "none" }}
-              >
-                {el}
-              </div>
-            ))}
-
-            {/* Light pages: only rendered when active (no long-running state). */}
-            {!PERSISTENT_PAGES.includes(page) && (
-              <div key={page}>
-                {lightPageMap[page]}
-              </div>
-            )}
+            {pageMap[page]}
           </main>
         </div>
       )}
