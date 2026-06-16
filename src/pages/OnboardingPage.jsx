@@ -293,27 +293,52 @@ export default function OnboardingPage({ user, onComplete }) {
     if (!info.weight || !info.height || !info.age) {
       return <p style={{ fontSize: 13, color: C.muted }}>Fill basic info in Step 1 to see your goal.</p>;
     }
-    const bmr   = calcBMR(+info.weight, +info.height, +info.age, info.gender);
-    const tdee  = calcTDEE(bmr, info.activity);
+
+    // BMR and TDEE are FIXED — they only depend on body stats + activity level.
+    // Changing target_weight or goal_weeks does NOT affect these values.
+    const bmr  = calcBMR(+info.weight, +info.height, +info.age, info.gender);
+    const tdee = calcTDEE(bmr, info.activity);
+
+    // Only dailyTarget (inside smart.targets) changes based on goal/target_weight/weeks.
     const smart = calcSmartGoal(tdee, info.goal, +info.target_weight || null, +info.weight, +info.goal_weeks);
+
     return (
       <div>
         <p style={{ fontWeight: 700, fontSize: 14, color: C.green, marginBottom: 6 }}>🎯 {smart.label}</p>
-        <p style={{ fontSize: 12, color: C.text, lineHeight: 1.6 }}>
-          Daily target: <b>{smart.targets.calories} kcal</b><br />
+
+        {/* Fixed body stats */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+          <div style={{ flex: 1, background: "#fff", borderRadius: 10, padding: "8px 12px", border: `1px solid ${C.border}`, textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: C.muted, margin: "0 0 2px" }}>BMR <span style={{ fontWeight: 400 }}>(fixed)</span></p>
+            <p style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: 0 }}>{Math.round(bmr)} kcal</p>
+          </div>
+          <div style={{ flex: 1, background: "#fff", borderRadius: 10, padding: "8px 12px", border: `1px solid ${C.border}`, textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: C.muted, margin: "0 0 2px" }}>TDEE <span style={{ fontWeight: 400 }}>(fixed)</span></p>
+            <p style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: 0 }}>{tdee} kcal</p>
+          </div>
+          <div style={{ flex: 1, background: C.greenLight, borderRadius: 10, padding: "8px 12px", border: `1.5px solid ${C.green}`, textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: C.green, margin: "0 0 2px" }}>Daily Target <span style={{ fontWeight: 400 }}>(adjusted)</span></p>
+            <p style={{ fontSize: 14, fontWeight: 800, color: C.green, margin: 0 }}>{smart.targets.calories} kcal</p>
+          </div>
+        </div>
+
+        {/* Macros */}
+        <p style={{ fontSize: 12, color: C.text, lineHeight: 1.6, marginBottom: 10 }}>
           Protein: <b>{smart.targets.protein}g</b> · Carbs: <b>{smart.targets.carbs}g</b> · Fat: <b>{smart.targets.fat}g</b>
         </p>
-        <div style={{ marginTop: 12, background: "#fff", borderRadius: 10, padding: "10px 14px", border: `1px solid ${C.border}` }}>
+
+        {/* Explanation */}
+        <div style={{ background: "#fff", borderRadius: 10, padding: "10px 14px", border: `1px solid ${C.border}` }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 6 }}>📖 What do these numbers mean?</p>
           <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.7, margin: 0 }}>
-            <b>BMR ({Math.round(bmr)} kcal)</b> — the minimum calories your body burns at rest.<br />
-            <b>TDEE ({tdee} kcal)</b> — total calories burned per day including your activity level.<br />
-            <b>Your daily target ({smart.targets.calories} kcal)</b> is your TDEE adjusted
+            <b>BMR ({Math.round(bmr)} kcal)</b> — calories your body burns at complete rest. Fixed by your body stats.<br />
+            <b>TDEE ({tdee} kcal)</b> — total daily burn including activity. Fixed by your body stats + activity level.<br />
+            <b>Daily target ({smart.targets.calories} kcal)</b> — TDEE
             {smart.dailyDelta < 0
-              ? ` with a ${Math.abs(smart.dailyDelta)} kcal deficit to help you lose weight safely.`
+              ? ` minus a ${Math.abs(smart.dailyDelta)} kcal/day deficit to hit your weight loss goal.`
               : smart.dailyDelta > 0
-              ? ` with a ${smart.dailyDelta} kcal surplus to support muscle gain.`
-              : " to maintain your current weight."}
+              ? ` plus a ${smart.dailyDelta} kcal/day surplus to support muscle gain.`
+              : " — no adjustment needed to maintain your weight."}
           </p>
         </div>
         <p style={{ fontSize: 11, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>📐 {smart.rationale}</p>
