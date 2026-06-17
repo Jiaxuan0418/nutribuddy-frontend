@@ -136,11 +136,11 @@ export default function OnboardingPage({ user, onComplete }) {
       // ── Age: 10–100 ──
       if (!Number.isInteger(age))        { setErr("Age must be a whole number (e.g. 25)."); return; }
       if (age < 10)                      { setErr(`Age ${age} is too low. This app is designed for users aged 10 and above.`); return; }
-      if (age > 100)                     { setErr(`Age ${age} seems too high. Please double-check — valid range is 10–100.`); return; }
+      if (age > 120)                     { setErr(`Please enter a valid age (10–120).`); return; }
 
       // ── Weight: 20–250 kg ──
       if (weight < 20)                   { setErr(`Weight ${weight} kg is too low. Valid range is 20–250 kg.`); return; }
-      if (weight > 250)                  { setErr(`Weight ${weight} kg seems too high. Please double-check — valid range is 20–250 kg.`); return; }
+      if (weight > 250)                  { setErr(`Please enter a valid weight (20–250 kg).`); return; }
 
       // ── Height: 100–250 cm ──
       if (height < 100)                  { setErr(`Height ${height} cm seems too low. Valid range is 100–250 cm. Did you enter it in metres by mistake?`); return; }
