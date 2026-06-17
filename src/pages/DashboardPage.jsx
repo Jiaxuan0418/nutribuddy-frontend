@@ -81,89 +81,207 @@ function MacroCard({ icon, label, current, target, unit, color }) {
   );
 }
 
-// ── Chart renderers ───────────────────────────────────────────────────────────
-function BarChart({ data, labels, target, highlightColor, baseColor }) {
-  const max = Math.max(...data, target, 1);
+// ── Dual-axis chart helpers ───────────────────────────────────────────────────
+// Calories (kcal) are ~10-20x larger than Protein/Carbs/Fat (g).
+// Fix: normalise every series independently to its own max so all lines/bars
+// fill the chart area proportionally. Y-axis ticks show actual values per series.
+
+function normSeries(series) {
+  return series.map(s => {
+    const ownMax = Math.max(...s.data, s.target, 1);
+    return { ...s, norm: s.data.map(v => v / ownMax), ownMax };
+  });
+}
+
+// ── Multi-series Bar ──────────────────────────────────────────────────────────
+function MultiBarChart({ series, labels }) {
+  const ns    = normSeries(series);
+  const H     = 110;
+  const multi = ns.length > 1;
+
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 130 }}>
-      {data.map((val, i) => (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: multi ? 4 : 8, height: H + 32 }}>
+      {labels.map((lbl, i) => (
         <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 700 }}>{Math.round(val) || ""}</div>
-          <div style={{
-            width: "100%", borderRadius: "6px 6px 0 0", minHeight: 4,
-            height: `${(val / max) * 90}px`,
-            background: val >= target ? highlightColor : baseColor,
-            transition: "height .5s ease",
-          }} />
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontWeight: 700 }}>{labels[i]}</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: H }}>
+            {ns.map((s, si) => {
+              const h       = Math.max(s.norm[i] * H, s.data[i] > 0 ? 4 : 0);
+              const onTrack = s.data[i] >= s.target;
+              return (
+                <div key={si}
+                  title={`${s.label}: ${Math.round(s.data[i])} ${s.unit} (target ${s.target})`}
+                  style={{
+                    width: multi ? Math.max(8, Math.floor(44 / ns.length)) : "100%",
+                    minWidth: 6, height: h,
+                    borderRadius: "4px 4px 0 0",
+                    background: onTrack ? s.color : s.color + "55",
+                    border: onTrack ? "none" : `1.5px solid ${s.color}`,
+                    transition: "height .5s ease",
+                    boxSizing: "border-box", position: "relative",
+                  }}
+                >
+                  {!multi && s.data[i] > 0 && (
+                    <div style={{
+                      position: "absolute", top: -18, left: "50%",
+                      transform: "translateX(-50%)",
+                      fontSize: 10, fontWeight: 700, color: C.muted, whiteSpace: "nowrap",
+                    }}>{Math.round(s.data[i])}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 5, fontWeight: 700 }}>{lbl}</div>
         </div>
       ))}
     </div>
   );
 }
 
-function LineChart({ data, labels, target, highlightColor }) {
-  const W = 560, H = 110, PAD = 20;
-  const minV = Math.min(...data);
-  const maxV = Math.max(...data, target, minV + 1);
-  const xs = labels.map((_, i) => PAD + (i / (labels.length - 1)) * (W - PAD * 2));
-  const ys = data.map(v => H - PAD - ((v - minV) / (maxV - minV + 1)) * (H - PAD * 2));
-  const path = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x},${ys[i]}`).join(" ");
-  const targetY = H - PAD - ((target - minV) / (maxV - minV + 1)) * (H - PAD * 2);
+// ── Multi-series Line (dual Y-axis) ──────────────────────────────────────────
+function MultiLineChart({ series, labels }) {
+  const W = 560, H = 130, LPAD = 40, RPAD = 38, TPAD = 16, BPAD = 22;
+  const ns    = normSeries(series);
+  const multi = ns.length > 1;
+
+  const xs = labels.map((_, i) =>
+    labels.length > 1
+      ? LPAD + (i / (labels.length - 1)) * (W - LPAD - RPAD)
+      : (W + LPAD - RPAD) / 2
+  );
+  const toY = n => TPAD + (1 - n) * (H - TPAD - BPAD);
+
+  // Left axis = Calories (first selected); Right axis = macros (g)
+  const leftS   = ns[0];
+  const rightNS = multi ? ns.slice(1) : [];
+  const rightMax = rightNS.length ? Math.max(...rightNS.map(s => s.ownMax)) : 0;
+  const ticks = [0, 0.25, 0.5, 0.75, 1];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 130, overflow: "visible" }}>
-      <line x1={PAD} y1={targetY} x2={W-PAD} y2={targetY}
-        stroke={C.green} strokeWidth={1.5} strokeDasharray="5 4" opacity={0.5} />
-      <path d={`${path} L${xs[xs.length-1]},${H} L${xs[0]},${H} Z`}
-        fill={highlightColor} opacity={0.25} />
-      <path d={path} fill="none" stroke={highlightColor} strokeWidth={2.5}
-        strokeLinejoin="round" strokeLinecap="round" />
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 200, overflow: "visible" }}>
+      {/* grid */}
+      {ticks.map((n, i) => (
+        <line key={i} x1={LPAD} y1={toY(n)} x2={W - RPAD} y2={toY(n)}
+          stroke="#e5e7eb" strokeWidth={1} />
+      ))}
+
+      {/* left Y-axis ticks (first series) */}
+      {ticks.map((n, i) => (
+        <text key={i} x={LPAD - 6} y={toY(n) + 4}
+          textAnchor="end" fontSize={9} fill={leftS.color} fontWeight={700}>
+          {Math.round(n * leftS.ownMax)}
+        </text>
+      ))}
+      <text x={LPAD - 6} y={TPAD - 5} textAnchor="end" fontSize={8} fill={leftS.color} fontWeight={700}>
+        {leftS.unit}
+      </text>
+
+      {/* right Y-axis ticks (remaining series, normalised to rightMax) */}
+      {multi && ticks.map((n, i) => (
+        <text key={i} x={W - RPAD + 6} y={toY(n) + 4}
+          textAnchor="start" fontSize={9} fill={rightNS[0].color} fontWeight={700}>
+          {Math.round(n * rightMax)}
+        </text>
+      ))}
+      {multi && (
+        <text x={W - RPAD + 6} y={TPAD - 5} textAnchor="start" fontSize={8}
+          fill={rightNS[0].color} fontWeight={700}>g</text>
+      )}
+
+      {/* series */}
+      {ns.map((s, si) => {
+        const ys   = s.norm.map(n => toY(n));
+        const path = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x},${ys[i]}`).join(" ");
+        const tY   = toY(s.target / s.ownMax);
+        return (
+          <g key={si}>
+            <line x1={LPAD} y1={tY} x2={W - RPAD} y2={tY}
+              stroke={s.color} strokeWidth={1.2} strokeDasharray="5 4" opacity={0.4} />
+            <path d={`${path} L${xs[xs.length-1]},${toY(0)} L${xs[0]},${toY(0)} Z`}
+              fill={s.color} opacity={multi ? 0.06 : 0.14} />
+            <path d={path} fill="none" stroke={s.color} strokeWidth={2.5}
+              strokeLinejoin="round" strokeLinecap="round" />
+            {xs.map((x, i) => (
+              <g key={i}>
+                <circle cx={x} cy={ys[i]} r={4} fill={s.color} stroke="#fff" strokeWidth={1.5} />
+                {!multi && s.data[i] > 0 && (
+                  <text x={x} y={ys[i] - 8} textAnchor="middle"
+                    fontSize={10} fill={s.color} fontWeight={700}>
+                    {Math.round(s.data[i])}
+                  </text>
+                )}
+              </g>
+            ))}
+          </g>
+        );
+      })}
+
+      {/* X labels */}
       {xs.map((x, i) => (
-        <g key={i}>
-          <circle cx={x} cy={ys[i]} r={5} fill={highlightColor} stroke="#fff" strokeWidth={2} />
-          <text x={x} y={ys[i]-10} textAnchor="middle" fontSize={10} fill={C.muted} fontWeight={700}>
-            {Math.round(data[i]) || ""}
-          </text>
-          <text x={x} y={H-2} textAnchor="middle" fontSize={10} fill={C.muted} fontWeight={700}>
-            {labels[i]}
-          </text>
-        </g>
+        <text key={i} x={x} y={H - 4} textAnchor="middle"
+          fontSize={10} fill={C.muted} fontWeight={700}>{labels[i]}</text>
       ))}
     </svg>
   );
 }
 
-function DotChart({ data, labels, target, highlightColor }) {
-  const dotMax = Math.max(...data, 1);
+// ── Multi-series Dot ──────────────────────────────────────────────────────────
+function MultiDotChart({ series, labels }) {
+  const ns    = normSeries(series);
+  const multi = ns.length > 1;
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 130 }}>
-      {data.map((val, i) => {
-        const pct = val / dotMax;
-        return (
-          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 700 }}>{Math.round(val) || ""}</div>
-            <div style={{
-              width: `${28 + pct * 18}px`, height: `${28 + pct * 18}px`,
-              borderRadius: "50%",
-              background: val >= target ? highlightColor : C.greenLight,
-              border: `3px solid ${val >= target ? highlightColor : C.border}`,
-              transition: "all .4s ease",
-            }} />
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 6, fontWeight: 700 }}>{labels[i]}</div>
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 170 }}>
+      {labels.map((lbl, i) => (
+        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 4, alignItems: "flex-end", marginBottom: 4 }}>
+            {ns.map((s, si) => {
+              const size    = 14 + s.norm[i] * 30;
+              const onTrack = s.data[i] >= s.target;
+              return (
+                <div key={si}
+                  title={`${s.label}: ${Math.round(s.data[i])} ${s.unit} (target ${s.target})`}
+                  style={{
+                    width: size, height: size, borderRadius: "50%",
+                    background: onTrack ? s.color : "transparent",
+                    border: `2.5px solid ${s.color}`,
+                    transition: "all .4s ease", flexShrink: 0,
+                  }}
+                />
+              );
+            })}
           </div>
-        );
-      })}
+          {!multi && ns[0]?.data[i] > 0 && (
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, marginBottom: 2 }}>
+              {Math.round(ns[0].data[i])}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>{lbl}</div>
+        </div>
+      ))}
     </div>
   );
 }
 
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function DashboardPage({ profile, user }) {
-  const [chartType,    setChartType]    = useState("bar");
-  const [activeMetric, setActiveMetric] = useState("calories");
-  const [weeklyData,   setWeeklyData]   = useState(null);
-  const [loading,      setLoading]      = useState(true);
+  const [chartType,     setChartType]     = useState("bar");
+  const [activeMetrics, setActiveMetrics] = useState(new Set(["calories"]));
+  const [weeklyData,    setWeeklyData]    = useState(null);
+  const [loading,       setLoading]       = useState(true);
+
+  function toggleMetric(id) {
+    setActiveMetrics(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        if (next.size === 1) return prev; // always keep at least one
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   // Progress Tracker state
   const [weight,      setWeight]      = useState("");
@@ -277,7 +395,8 @@ export default function DashboardPage({ profile, user }) {
     { id: "fat",      label: "Fat",      data: fatData,     target: targets.fat,      color: C.green,   unit: "g"    },
   ];
 
-  const metric = METRICS.find(m => m.id === activeMetric);
+  const metric = METRICS.find(m => m.id === [...activeMetrics][0]);
+  const activeSeries = METRICS.filter(m => activeMetrics.has(m.id));
 
   const STATS = [
     { label: "Avg Daily Calories", value: avgCalories.toLocaleString(), unit: "kcal/day",    icon: "🔥", color: C.orange   },
@@ -308,19 +427,31 @@ export default function DashboardPage({ profile, user }) {
       <div className="nb-card">
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
           <div className="nb-card-title" style={{ margin: 0, flex: 1 }}>Weekly Trend</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {METRICS.map(m => (
-              <button key={m.id} onClick={() => setActiveMetric(m.id)}
-                style={{
-                  padding: "5px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700,
-                  border: `1.5px solid ${activeMetric === m.id ? m.color : C.border}`,
-                  background: activeMetric === m.id ? m.color : "#fff",
-                  color: activeMetric === m.id ? "#fff" : C.muted,
-                  cursor: "pointer", transition: "all .18s",
-                }}
-              >{m.label}</button>
-            ))}
+
+          {/* Multi-select metric toggles */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {METRICS.map(m => {
+              const active = activeMetrics.has(m.id);
+              return (
+                <button key={m.id} onClick={() => toggleMetric(m.id)}
+                  title={active && activeMetrics.size === 1 ? "At least one metric must be selected" : ""}
+                  style={{
+                    padding: "5px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700,
+                    border: `1.5px solid ${active ? m.color : C.border}`,
+                    background: active ? m.color : "#fff",
+                    color: active ? "#fff" : C.muted,
+                    cursor: "pointer", transition: "all .18s",
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}
+                >
+                  {active && <span style={{ fontSize: 9, opacity: .85 }}>✓</span>}
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Chart type switcher — uses colour of first active metric */}
           <div style={{ display: "flex", background: "#f0f0f0", borderRadius: 10, padding: 3, gap: 2 }}>
             {CHART_TYPES.map(ct => (
               <button key={ct.id} onClick={() => setChartType(ct.id)}
@@ -335,18 +466,33 @@ export default function DashboardPage({ profile, user }) {
           </div>
         </div>
 
-        {chartType === "bar"  && <BarChart  data={metric.data} labels={labels} target={metric.target} highlightColor={metric.color} baseColor={C.greenLight} />}
-        {chartType === "line" && <LineChart data={metric.data} labels={labels} target={metric.target} highlightColor={metric.color} />}
-        {chartType === "dot"  && <DotChart  data={metric.data} labels={labels} target={metric.target} highlightColor={metric.color} />}
+        {chartType === "bar"  && <MultiBarChart  series={activeSeries} labels={labels} />}
+        {chartType === "line" && <MultiLineChart series={activeSeries} labels={labels} />}
+        {chartType === "dot"  && <MultiDotChart  series={activeSeries} labels={labels} />}
 
-        <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <div style={{ width: 12, height: 12, borderRadius: 3, background: metric.color }} />
-          <span style={{ fontSize: 12, color: C.muted }}>On / above target</span>
-          <div style={{ width: 12, height: 12, borderRadius: 3, background: C.greenLight, marginLeft: 12, border: `1px solid ${C.border}` }} />
-          <span style={{ fontSize: 12, color: C.muted }}>Below target</span>
-          <span style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>
-            Target: <b style={{ color: metric.color }}>{metric.target} {metric.unit}/day</b>
-          </span>
+        {/* Legend */}
+        <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          {activeSeries.map(s => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: s.color }} />
+              <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>
+                {s.label}
+                <span style={{ color: s.color, marginLeft: 4 }}>
+                  (target: {s.target} {s.unit}/day)
+                </span>
+              </span>
+            </div>
+          ))}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: "#555" }} />
+              <span style={{ fontSize: 12, color: C.muted }}>On / above target</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: "#55555544", border: "1px solid #ccc" }} />
+              <span style={{ fontSize: 12, color: C.muted }}>Below target</span>
+            </div>
+          </div>
         </div>
       </div>
 
