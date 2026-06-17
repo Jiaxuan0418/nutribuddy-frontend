@@ -123,10 +123,28 @@ export default function OnboardingPage({ user, onComplete }) {
 
   function handleContinue() {
     if (step === 0) {
-      if (!info.age || !info.weight || !info.height) { setErr("Please fill in your age, weight, and height."); return; }
-      if (+info.age < 1  || +info.age > 120)          { setErr("Please enter a valid age.");    return; }
-      if (+info.weight < 20 || +info.weight > 300)    { setErr("Please enter a valid weight."); return; }
-      if (+info.height < 50 || +info.height > 300)    { setErr("Please enter a valid height."); return; }
+      // ── Required fields ──
+      if (!info.age || !info.weight || !info.height) {
+        setErr("Please fill in your age, weight, and height.");
+        return;
+      }
+
+      const age    = +info.age;
+      const weight = +info.weight;
+      const height = +info.height;
+
+      // ── Age: 10–100 ──
+      if (!Number.isInteger(age))        { setErr("Age must be a whole number (e.g. 25)."); return; }
+      if (age < 10)                      { setErr(`Age ${age} is too low. This app is designed for users aged 10 and above.`); return; }
+      if (age > 100)                     { setErr(`Age ${age} seems too high. Please double-check — valid range is 10–100.`); return; }
+
+      // ── Weight: 20–250 kg ──
+      if (weight < 20)                   { setErr(`Weight ${weight} kg is too low. Valid range is 20–250 kg.`); return; }
+      if (weight > 250)                  { setErr(`Weight ${weight} kg seems too high. Please double-check — valid range is 20–250 kg.`); return; }
+
+      // ── Height: 100–250 cm ──
+      if (height < 100)                  { setErr(`Height ${height} cm seems too low. Valid range is 100–250 cm. Did you enter it in metres by mistake?`); return; }
+      if (height > 250)                  { setErr(`Height ${height} cm seems too high. Please double-check — valid range is 100–250 cm.`); return; }
     }
     setErr("");
     setStep(step + 1);
