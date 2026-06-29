@@ -25,21 +25,9 @@ function formatTime(iso) {
 }
 
 // ── Message formatter: converts AI Markdown text into structured JSX ──────────
-//
-// Handles:
-//   **bold**        → <strong>
-//   *italic*        → <em>
-//   - item / • item → <ul><li>
-//   1. item         → <ol><li>
-//   ### Heading     → green section header
-//   blank line      → paragraph gap
-//   Fallback        → auto-splits long run-on sentences at ". " boundaries
-//                     so even un-formatted AI replies get some structure
-//
 function formatMessage(text) {
   if (!text) return null;
 
-  // ── Inline bold / italic formatter ──────────────────────────────────────
   function inlineFormat(str) {
     const parts = str.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
     return parts.map((part, i) => {
@@ -51,7 +39,6 @@ function formatMessage(text) {
     });
   }
 
-  // ── Pre-process: normalise line endings ─────────────────────────────────
   const lines = text.replace(/\r\n/g, "\n").split("\n");
 
   const elements = [];
@@ -85,7 +72,6 @@ function formatMessage(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trimEnd();
 
-    // ── Section heading: ###, ##, # ───────────────────────────────────────
     const headMatch = line.match(/^#{1,3}\s+(.+)/);
     if (headMatch) {
       flushList();
@@ -105,14 +91,12 @@ function formatMessage(text) {
       continue;
     }
 
-    // ── Horizontal rule ───────────────────────────────────────────────────
     if (/^[-*_]{3,}$/.test(line.trim())) {
       flushList();
       elements.push(<hr key={key++} style={{ border: "none", borderTop: "1px solid #e8f5ee", margin: "8px 0" }} />);
       continue;
     }
 
-    // ── Unordered list: "- " or "• " or "* " ─────────────────────────────
     const ulMatch = line.match(/^[-•*]\s+(.+)/);
     if (ulMatch) {
       if (listType === "ol") flushList();
@@ -121,7 +105,6 @@ function formatMessage(text) {
       continue;
     }
 
-    // ── Ordered list: "1. " or "1) " ─────────────────────────────────────
     const olMatch = line.match(/^\d+[.)]\s+(.+)/);
     if (olMatch) {
       if (listType === "ul") flushList();
@@ -130,7 +113,6 @@ function formatMessage(text) {
       continue;
     }
 
-    // ── Blank line → paragraph gap ────────────────────────────────────────
     if (line.trim() === "") {
       flushList();
       if (elements.length > 0) {
@@ -139,16 +121,12 @@ function formatMessage(text) {
       continue;
     }
 
-    // ── Normal text line ──────────────────────────────────────────────────
     flushList();
 
-    // Fallback: if a line is a long run-on paragraph (>120 chars, no Markdown),
-    // auto-split at sentence boundaries so it's easier to read.
     const trimmed = line.trim();
     const isLong  = trimmed.length > 120 && !trimmed.includes("**");
 
     if (isLong) {
-      // Split on ". ", "! ", "? " — keep the punctuation on the left chunk
       const sentences = trimmed.split(/(?<=[.!?])\s+/);
       if (sentences.length > 1) {
         sentences.forEach((sentence, si) => {
@@ -158,7 +136,6 @@ function formatMessage(text) {
               {inlineFormat(sentence.trim())}
             </p>
           );
-          // Add a tiny gap between sentences
           if (si < sentences.length - 1) {
             elements.push(<div key={key++} style={{ height: 4 }} />);
           }
@@ -295,6 +272,7 @@ export default function ChatbotPage({ profile, user }) {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [historyEnabled,  setHistoryEnabled]  = useState(true);
   const [showHistory,     setShowHistory]     = useState(true);
+  const [todayLogs,       setTodayLogs]       = useState([]);   // ← NEW
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -303,7 +281,21 @@ export default function ChatbotPage({ profile, user }) {
 
   useEffect(() => {
     fetchSessions();
+    fetchTodayLogs();   // ← NEW: load food logs on mount
   }, []);
+
+  // ── NEW: fetch today's food log once on page load ─────────────────────────
+  async function fetchTodayLogs() {
+    if (!user?.id) return;
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const res   = await fetch(`${API_URL}/food/log/${user.id}?date=${today}`);
+      const data  = await res.json();
+      setTodayLogs(data.logs || []);
+    } catch {
+      // silently ignore — backend will fall back to querying DB itself
+    }
+  }
 
   async function fetchSessions() {
     if (!user?.id) return;
@@ -311,7 +303,6 @@ export default function ChatbotPage({ profile, user }) {
     try {
       const res  = await fetch(`${API_URL}/chat/history/${user.id}`);
       const data = await res.json();
-      // Backend returns a "warning" key when the SQL table isn't set up yet
       if (data.warning) {
         setHistoryEnabled(false);
       } else {
@@ -325,7 +316,7 @@ export default function ChatbotPage({ profile, user }) {
   }
 
   async function loadSession(sid) {
-    if (sid === sessionId) return; // already loaded
+    if (sid === sessionId) return;
     setLoading(true);
     try {
       const res  = await fetch(`${API_URL}/chat/history/${user.id}/${sid}`);
@@ -347,6 +338,7 @@ export default function ChatbotPage({ profile, user }) {
     setMessages([makeGreeting()]);
     setSessionId(null);
     setInput("");
+    fetchTodayLogs(); // ← refresh logs when starting a new chat
   }
 
   async function deleteSession(sid) {
@@ -362,16 +354,31 @@ export default function ChatbotPage({ profile, user }) {
     if (!text || loading) return;
 
     setInput("");
-    const userMsg    = { role: "user", text };
+    const userMsg     = { role: "user", text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setLoading(true);
 
-    // Build history — skip the greeting, use "user"/"model" roles for backend
+    // Build history — skip greeting, map roles for backend
     const historyPayload = newMessages.slice(1).map((m) => ({
       role: m.role === "ai" ? "model" : "user",
       text: m.text,
     }));
+
+    // ── Refresh today's logs right before sending so KG context is current ──
+    let logsToSend = todayLogs;
+    if (user?.id) {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const res   = await fetch(`${API_URL}/food/log/${user.id}?date=${today}`);
+        const data  = await res.json();
+        const fresh = data.logs || [];
+        setTodayLogs(fresh);
+        logsToSend = fresh;
+      } catch {
+        // use cached todayLogs if fetch fails
+      }
+    }
 
     try {
       const res = await fetch(`${API_URL}/chat`, {
@@ -380,8 +387,9 @@ export default function ChatbotPage({ profile, user }) {
         body: JSON.stringify({
           user,
           profile,
-          session_id: sessionId,   // null on first message → backend generates one
+          session_id: sessionId,
           history:    historyPayload,
+          logs:       logsToSend,   // ← KEY FIX: pass food logs so backend can query KG
         }),
       });
 
@@ -396,15 +404,12 @@ export default function ChatbotPage({ profile, user }) {
 
       setMessages((prev) => [...prev, { role: "ai", text: reply }]);
 
-      // Update session id and refresh the history list
       if (newSid) {
         const isNewSession = !sessionId;
         setSessionId(newSid);
         if (historyEnabled) {
-          // Small delay so DB write completes before we fetch the list
           setTimeout(fetchSessions, 400);
           if (isNewSession) {
-            // Immediately add a placeholder so the panel updates right away
             setSessions((prev) => {
               const exists = prev.some((s) => s.session_id === newSid);
               if (exists) return prev;
