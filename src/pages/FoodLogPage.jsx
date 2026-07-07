@@ -186,7 +186,7 @@ function PredictionBadge({ item, selected, onSelect }) {
   );
 }
 
-function NutritionPreview({ nutrition, loading }) {
+function NutritionPreview({ nutrition, loading, onApply }) {
   if (loading) {
     return (
       <div style={{
@@ -262,6 +262,21 @@ function NutritionPreview({ nutrition, loading }) {
           You can adjust the numbers manually before logging.
         </div>
       )}
+
+      {onApply && (
+        <button
+          onClick={onApply}
+          style={{
+            marginTop: 10, width: "100%", padding: "8px 0",
+            borderRadius: 8, border: `1.5px solid ${isAI ? "#f59e0b" : C.green}`,
+            background: "#fff", cursor: "pointer",
+            fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 12.5,
+            color: isAI ? "#b45309" : C.green,
+          }}
+        >
+          Use these values
+        </button>
+      )}
     </div>
   );
 }
@@ -280,18 +295,22 @@ function ManualForm({ onAdd, onCancel }) {
     setNutrition(null);
     try {
       const data = await fetchNutrition(form.name.trim());
-      if (data && !data.error) {
-        setNutrition(data);
-        setForm((f) => ({
-          ...f,
-          cals:    f.cals    || String(data.calories),
-          protein: f.protein || String(data.protein),
-          carbs:   f.carbs   || String(data.carbs),
-          fat:     f.fat     || String(data.fat),
-        }));
-      }
+      // Only show it in the Nutrition Info box — do NOT write into the form fields.
+      // The user decides whether to use these values via the "Use these values" button.
+      if (data && !data.error) setNutrition(data);
     } catch (_) {}
     setKgLoading(false);
+  }
+
+  function applyNutrition() {
+    if (!nutrition) return;
+    setForm((f) => ({
+      ...f,
+      cals:    String(nutrition.calories),
+      protein: String(nutrition.protein),
+      carbs:   String(nutrition.carbs),
+      fat:     String(nutrition.fat),
+    }));
   }
 
   function handleAdd() {
@@ -320,7 +339,7 @@ function ManualForm({ onAdd, onCancel }) {
             onKeyDown={(e) => e.key === "Enter" && handleNameBlur()}
           />
           <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
-            Tab out or press Enter after typing to auto-fill nutrition from the Knowledge Graph.
+            Tab out or press Enter after typing to look up nutrition info — you choose whether to use it.
           </div>
         </div>
         <div className="nb-form-group">
@@ -332,27 +351,27 @@ function ManualForm({ onAdd, onCancel }) {
         </div>
         <div className="nb-form-group">
           <label className="nb-label">Calories (kcal) *</label>
-          <input className="nb-input" type="number" placeholder="e.g. 350"
+          <input className="nb-input" type="number" placeholder="Please enter value"
             value={form.cals} onChange={(e) => set("cals", e.target.value)} />
         </div>
         <div className="nb-form-group">
           <label className="nb-label">Protein (g)</label>
-          <input className="nb-input" type="number" placeholder="e.g. 25"
+          <input className="nb-input" type="number" placeholder="Please enter value"
             value={form.protein} onChange={(e) => set("protein", e.target.value)} />
         </div>
         <div className="nb-form-group">
           <label className="nb-label">Carbs (g)</label>
-          <input className="nb-input" type="number" placeholder="e.g. 40"
+          <input className="nb-input" type="number" placeholder="Please enter value"
             value={form.carbs} onChange={(e) => set("carbs", e.target.value)} />
         </div>
         <div className="nb-form-group">
           <label className="nb-label">Fat (g)</label>
-          <input className="nb-input" type="number" placeholder="e.g. 10"
+          <input className="nb-input" type="number" placeholder="Please enter value"
             value={form.fat} onChange={(e) => set("fat", e.target.value)} />
         </div>
       </div>
 
-      <NutritionPreview nutrition={nutrition} loading={kgLoading} />
+      <NutritionPreview nutrition={nutrition} loading={kgLoading} onApply={applyNutrition} />
 
       {!form.name && (
         <p style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
@@ -505,7 +524,7 @@ function ImageRecognitionForm({ onAdd, onCancel }) {
           padding:      preview ? 0 : "32px 16px",
           textAlign:    "center",
           cursor:       "pointer",
-          background:   preview ? "transparent" : C.greenLight,
+          background:   preview ? "#f4f7f6" : C.greenLight,
           overflow:     "hidden",
           transition:   "border .2s",
           marginBottom: 14,
@@ -519,10 +538,15 @@ function ImageRecognitionForm({ onAdd, onCancel }) {
         />
         {preview ? (
           <>
-            <img
-              src={preview} alt="food preview"
-              style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
-            />
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              height: 220, background: "#f4f7f6",
+            }}>
+              <img
+                src={preview} alt="food preview"
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+              />
+            </div>
             <div style={{
               position: "absolute", bottom: 0, left: 0, right: 0,
               background: "rgba(0,0,0,.45)", color: "#fff",
